@@ -4,6 +4,7 @@ import express from "express";
 import mongoose from "mongoose";
 import bodyParser from "body-parser";
 import _ from "lodash";
+import "dotenv/config";
 
 const app = express();
 
@@ -12,9 +13,7 @@ app.set("view engine", "ejs");
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static("public"));
 
-mongoose.connect(
-  "mongodb+srv://billasujith77:Praveen17@cluster0.iqzj7rl.mongodb.net/todolistDB"
-);
+mongoose.connect(process.env.MONGO_URL + "/todolistDB");
 
 const itemsSchema = mongoose.Schema({
   name: String,
@@ -59,8 +58,16 @@ app.get("/:customListName", (req, res) => {
       });
       list.save();
       res.redirect("/" + customListName);
-    } else {
-      //Display existing list
+    }
+    //List found but no items present
+    else if (foundList.items.length === 0) {
+      res.render("list", {
+        listTitle: foundList.name,
+        newListItems: defaultItems,
+      });
+    }
+    //Display existing list
+    else {
       res.render("list", {
         listTitle: foundList.name,
         newListItems: foundList.items,
@@ -71,7 +78,7 @@ app.get("/:customListName", (req, res) => {
 
 app.post("/", (req, res) => {
   const itemName = req.body.newItem;
-  const listName = req.body.list;
+  const listName = _.capitalize(req.body.list);
   const item = new Item({
     name: itemName,
   });
@@ -89,7 +96,7 @@ app.post("/", (req, res) => {
 
 app.post("/delete", (req, res) => {
   const checkedItemId = req.body.checkbox;
-  const listName = req.body.listName;
+  const listName = _.capitalize(req.body.listName);
   if (listName === "Today") {
     Item.findByIdAndRemove(checkedItemId)
       .then(() => {
